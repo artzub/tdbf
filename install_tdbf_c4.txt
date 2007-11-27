@@ -1,0 +1,114 @@
+Installing "TDbf 6.4.8 - released 2006-04-29" in Borland C++ Builder 4 (and
+possibly others).
+
+Compiled by Troy A. Dalton 09/11/2006 12:00
+
+Please do not get aggravated and give up on TDbf.  If you have gone through the
+trouble of finding and downloading this program, you obviously need it.  I have
+spent many hours searching the WEB for a good local (non-BDE) database program,
+and am delighted I found TDbf.  It is well worth spending a little time to get
+it functioning properly (and very easy if you follow these instructions).  All
+of us who use and enjoy TDbf owe Micha Nelissen and Burov Dmitry a debt of
+gratitude.
+
+With that said, I cannot help you with the Package Options.  I am using BCB’s
+default settings until I find a need to change them.  My program is far from
+finished, and I will attend to these details when it is closer to its release.
+
+Do not try to install the component using 'tdbf_c4.bpk'.  As Mr. Nelissen says
+in the forum, he does not have BCB 4, so he cannot test the installation.  I
+have included my project package “TDbf.bpk,” for your convenience; if you have
+this file, try it first.  If you do not have it or are having trouble with it,
+please follow the instructions below.
+
+These directions are much easier to follow when printed.
+
+
+Following are the steps necessary to install TDbf in BCB 4:
+
+*  Install the TDbf 6.4.8 package.
+
+*  In the BCB IDE, choose: ‘File->New’.
+
+*  In ‘New' tab of the ‘New Items’ dialog box, double click 'Package’.
+
+*  A dialog box titled ‘Package – Package1.cpp’ will display.
+
+*  In the ‘Package – Package1.cpp’ dialog box, right click ‘Package1.cpp’ and
+   choose ‘Save as…’.
+
+*  Navigate to the directory where you installed ‘TDbf 6.4.8’, and in the ‘Save
+   Package1 As’ dialog box, enter ‘TDbf.bpk’ in the ‘File name:’ text box.
+
+*  Make sure ‘C++Builder package (*.bpk)’ is selected in the drop down list box
+   under ‘Save as type:’.
+
+*  Click on the ‘Save’ button – the ‘Package’ dialog box and the ‘.cpp’ file
+   under ‘Contains’ should now display ‘TDbf.cpp’.  This is the new name of the
+   package.
+
+*  Double click ‘TDbf.cpp’ under ‘Contains’ in the ‘Files’ section of the
+   ‘Package – TDbf.cpp’ dialog box.  This will open the BCB IDE code editor.
+
+*  Under ‘USEPACKAGE("vcl40.bpi");’ insert a blank line and enter 
+   ‘USEPACKAGE(“vcldb40.bpi”);’ – without the single quotes.
+
+*  Close the BCB IDE code editor.  It does not need to be saved.
+
+*  Click  ‘Add’ in the ‘Package – TDbf.cpp’ dialog box and select the ‘Browse’
+   button in the ‘Add’ dialog box that appears.
+
+*  If not there, navigate to the directory where you installed ‘TDbf 6.4.8’.
+
+*  Select ‘Pascal unit (*.pas)’ in the ‘Files of type:’ drop down list box of
+   the ‘Unit file name’ dialog box.
+
+*  Click once on ‘dbf.pas’ (this should be the first file in the list).
+
+*  Hold down the ‘Shift’ key and click once on ‘dbf_wtil.pas’ (this should be
+   the third to last file in the list).  Now every file in the list should be
+   selected except ‘tdbf_l.pas’ and ‘tdbf_ld.pas’.
+
+*  Click on the ‘Open’ button in the ‘Unit file name’ dialog box, then the ‘OK’
+   button in the ‘Add’ dialog box.
+
+*  The ‘Package – TDbf.cpp’ dialog box should now be populated with all the
+   files you just selected in the ‘Unit file name’ dialog box.
+
+*  Enlarge the ‘Package – TDbf.cpp’ dialog box so you can see all of the files
+   included in the ‘Files’ list.
+
+*  The ‘Files’ list includes a number of language files; all but one must be
+   removed.  The file ‘dbf_str.pas’ is for English, the other files use the
+   following convention: ‘dbf_str_XX.pas’, where XX is for the language used.
+   Decide which language file you need and remove all others by clicking on the
+   file and choosing ‘Remove’ at the top of the ‘Package – TDbf.cpp’ dialog box
+
+*  In the ‘File’ section of the ‘Package – TDbf.cpp’ dialog box, under
+   ‘Contains’, you should have 19 ‘.pas’ files, 'dbf.dcr', and ‘TDbf.cpp’.  
+   Under ‘Requires’, you should have ‘vcl40.bpi’.
+
+*  If you followed my directions precisely, you are now ready to compile.  Do
+   this by selecting ‘Compile’ at the top of the ‘Package – TDbf.cpp’ dialog
+   box.
+
+*  If the package complied without errors, select the ‘OK’ button in the
+   ‘Compiling’ dialog box.  If you encountered errors, close all files and
+   start over – it is much easier that way.
+
+*  If you have made it to this step, you are ready to install the package.
+   Choose ‘Install’ at the top of the ‘Package – TDbf.cpp’ dialog box.
+
+*  Read the 'Information' dialog box, then select its 'OK' button.
+
+*  Verify the installation by looking in your ‘Data Access’ tab of your
+   component list.  The last item should be the ‘TDBF’ component.  If not,
+   sorry, I cannot help.
+
+*  Close the BDE or select 'File-Close All' saving changes when asked.
+
+*  Congratulations!  You can now start using TDbf 6.4.8.  Download the demo
+   (which is the tutorial) and have fun!
+
+If you would like to send me your praises for my effort or actually have a
+question, you can do so at trasd@msn.com.

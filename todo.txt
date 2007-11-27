@@ -1,0 +1,25 @@
+TODO:
+
+to be implemented:
+- extend copyfrom functionality to copy between 2 active databases
+- better copyfrom; append to table, little different fields
+- global cache for dbfs, indexes
+- flush method to commit buffers to disk
+- required field checking
+- demo needs master/detail example
+- documentation needs expression index examples
+- val function for indexes
+- retrieve temporary filenames used in restructuretable
+- foNoPartialCompare in filter
+- autoinc field support for visual foxpro
+
+needs fixing:
+- lazarus projects need unit ideintf when dropping tdbf on forum
+- unix character set conversion is a mess
+- check paged cache flushing, recordcount in cache
+- adding records without doing CancelRange causes assertion violation
+- adding records while filter active causes autoinc fields not to be filled in
+- exception safe freeing of items in TOCollection.FreeItem
+
+bug reports:
+- wimb\app0018
