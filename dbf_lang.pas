@@ -465,11 +465,11 @@ const
 // reverse convert routines
 //*************************************************************************//
 
-function ConstructLangName(CodePage: Integer; Locale: LCID; IsFoxPro: Boolean): string;
+function ConstructLangName(CodePage: Integer; Locale: LCID; IsFoxPro: Boolean): AnsiString;
 
 function ConstructLangId(CodePage: Integer; Locale: LCID; IsFoxPro: Boolean): Byte;
 
-function GetLangId_From_LangName(LocaleStr: string): Byte;
+function GetLangId_From_LangName(LocaleStr: AnsiString): Byte;
 
 implementation
 
@@ -479,7 +479,7 @@ uses
 type
   PCardinal = ^Cardinal;
 
-function ConstructLangName(CodePage: Integer; Locale: LCID; IsFoxPro: Boolean): string;
+function ConstructLangName(CodePage: Integer; Locale: LCID; IsFoxPro: Boolean): AnsiString;
 var
   SubType: Cardinal;
 begin
@@ -491,7 +491,7 @@ begin
     // foxpro or dbase?
     if IsFoxPro then
     begin
-      Result := 'FOX' + PChar(@SubType);
+      Result := 'FOX' + PAnsiChar(@SubType);
       if CodePage = 1252 then
         Result := Result + 'WIN'
       else
@@ -510,7 +510,7 @@ begin
         else
           Result := Result + IntToStr(CodePage);
         // add subtype
-        Result := Result + PChar(@SubType);
+        Result := Result + PAnsiChar(@SubType);
       end;
     end;
   end;
@@ -607,14 +607,14 @@ begin
     Result := FindLangId(0, Locale, @LangId_To_Locale[0], IsFoxPro);
 end;
 
-function GetLangId_From_LangName(LocaleStr: string): Byte;
+function GetLangId_From_LangName(LocaleStr: AnsiString): Byte;
 var
   CodePage, SubType: Integer;
   IsFoxPro: Boolean;
-  CodePageStr: string;
+  CodePageStr: AnsiString;
 begin
   // determine foxpro/dbase
-  IsFoxPro := CompareMem(PChar('FOX'), PChar(LocaleStr), 3);
+  IsFoxPro := CompareMem(PChar('FOX'), PAnsiChar(LocaleStr), 3);
   // get codepage/locale subtype
   if IsFoxPro then
   begin

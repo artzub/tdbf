@@ -10,9 +10,6 @@ uses
   dbf_cursor,
   dbf_idxfile,
   dbf_prsdef,
-{$ifndef WINDOWS}
-  dbf_wtil,
-{$endif}
   dbf_common;
 
 type
@@ -30,7 +27,6 @@ type
     procedure SetPhysicalRecNo(RecNo: Integer); override;
     procedure SetSequentialRecNo(RecNo: Integer); override;
 
-    procedure VariantStrToBuffer(Key: Variant; ABuffer: PChar);
   public
     constructor Create(DbfIndexFile: TIndexFile);
     destructor Destroy; override;
@@ -40,13 +36,13 @@ type
     procedure First; override;
     procedure Last; override;
 
-    procedure Insert(RecNo: Integer; Buffer: PChar);
-    procedure Update(RecNo: Integer; PrevBuffer, NewBuffer: PChar);
+    procedure Insert(RecNo: Integer; Buffer: PAnsiChar);
+    procedure Update(RecNo: Integer; PrevBuffer, NewBuffer: PAnsiChar);
 
 {$ifdef SUPPORT_VARIANTS}
-    function  VariantToBuffer(Key: Variant; ABuffer: PChar): TExpressionType;
+    function  VariantToBuffer(Key: Variant; ABuffer: PAnsiChar): TExpressionType;
 {$endif}
-    function  CheckUserKey(Key: PChar; StringBuf: PChar): PChar;
+    function  CheckUserKey(Key: PAnsiChar; StringBuf: PAnsiChar): PAnsiChar;
 
     property IndexFile: TIndexFile read FIndexFile;
   end;
@@ -58,11 +54,6 @@ type
 
 //====================================================================
 implementation
-
-{$ifdef WINDOWS}
-uses
-  Windows;
-{$endif}
 
 //==========================================================
 //============ TIndexCursor
@@ -79,15 +70,15 @@ begin
   inherited Destroy;
 end;
 
-procedure TIndexCursor.Insert(RecNo: Integer; Buffer: PChar);
+procedure TIndexCursor.Insert(RecNo: Integer; Buffer: PAnsiChar);
 begin
-  TIndexFile(PagedFile).Insert(RecNo,Buffer);
+  TIndexFile(PagedFile).Insert(RecNo, {$IFDEF DELPHI_2009}PByte{$ENDIF}(Buffer));
   // TODO SET RecNo and Key
 end;
 
-procedure TIndexCursor.Update(RecNo: Integer; PrevBuffer, NewBuffer: PChar);
+procedure TIndexCursor.Update(RecNo: Integer; PrevBuffer, NewBuffer: PAnsiChar);
 begin
-  TIndexFile(PagedFile).Update(RecNo, PrevBuffer, NewBuffer);
+  TIndexFile(PagedFile).Update(RecNo, {$IFDEF DELPHI_2009}PByte{$ENDIF}(PrevBuffer), {$IFDEF DELPHI_2009}PByte{$ENDIF}(NewBuffer));
 end;
 
 procedure TIndexCursor.First;
@@ -137,19 +128,10 @@ end;
 
 {$ifdef SUPPORT_VARIANTS}
 
-procedure TIndexCursor.VariantStrToBuffer(Key: Variant; ABuffer: PChar);
+function TIndexCursor.VariantToBuffer(Key: Variant; ABuffer: PAnsiChar): TExpressionType;
+// assumes ABuffer is large enough ie. at least max key size
 var
   currLen: Integer;
-  StrKey: string;
-begin
-  StrKey := Key;
-  currLen := TranslateString(GetACP, FIndexFile.CodePage, PChar(StrKey), ABuffer, -1);
-  // we have null-terminated string, pad with spaces if string too short
-  FillChar(ABuffer[currLen], TIndexFile(PagedFile).KeyLen-currLen, ' ');
-end;
-
-function TIndexCursor.VariantToBuffer(Key: Variant; ABuffer: PChar): TExpressionType;
-// assumes ABuffer is large enough ie. at least max key size
 begin
   if (TIndexFile(PagedFile).KeyType='N') then
   begin
@@ -157,18 +139,21 @@ begin
     if (TIndexFile(PagedFile).IndexVersion <> xBaseIII) then
     begin
       // make copy of userbcd to buffer
-      Move(TIndexFile(PagedFile).PrepareKey(ABuffer, etFloat)[0], ABuffer[0], 11);
+      Move(TIndexFile(PagedFile).PrepareKey({$IFDEF DELPHI_2009}PByte{$ENDIF}(ABuffer), etFloat)[0], ABuffer[0], 11);
     end;
     Result := etInteger;
   end else begin
-    VariantStrToBuffer(Key, ABuffer);
+    StrPLCopy(ABuffer, Key, TIndexFile(PagedFile).KeyLen);
+    // we have null-terminated string, pad with spaces if string too short
+    currLen := StrLen(ABuffer);
+    FillChar(ABuffer[currLen], TIndexFile(PagedFile).KeyLen-currLen, ' ');
     Result := etString;
   end;
 end;
 
 {$endif}
 
-function TIndexCursor.CheckUserKey(Key: PChar; StringBuf: PChar): PChar;
+function TIndexCursor.CheckUserKey(Key: PAnsiChar; StringBuf: PAnsiChar): PAnsiChar;
 var
   keyLen, userLen: Integer;
 begin

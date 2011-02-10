@@ -4,7 +4,7 @@ unit dbf_wtil;
 
 interface
 
-{$ifndef WINDOWS}
+{$ifndef MSWINDOWS}
 uses
 {$ifdef FPC}
   BaseUnix,
@@ -251,13 +251,13 @@ function UnlockFile(hFile: THandle; dwFileOffsetLow, dwFileOffsetHigh: DWORD; nN
 procedure GetLocalTime(var lpSystemTime: TSystemTime);
 function GetOEMCP: Cardinal;
 function GetACP: Cardinal;
-function OemToChar(lpszSrc: PChar; lpszDst: PChar): BOOL;
-function CharToOem(lpszSrc: PChar; lpszDst: PChar): BOOL;
-function OemToCharBuff(lpszSrc: PChar; lpszDst: PChar; cchDstLength: DWORD): BOOL;
-function CharToOemBuff(lpszSrc: PChar; lpszDst: PChar; cchDstLength: DWORD): BOOL;
+function OemToChar(lpszSrc: PAnsiChar; lpszDst: PAnsiChar): BOOL;
+function CharToOem(lpszSrc: PAnsiChar; lpszDst: PAnsiChar): BOOL;
+function OemToCharBuff(lpszSrc: PAnsiChar; lpszDst: PAnsiChar; cchDstLength: DWORD): BOOL;
+function CharToOemBuff(lpszSrc: PAnsiChar; lpszDst: PAnsiChar; cchDstLength: DWORD): BOOL;
 function MultiByteToWideChar(CodePage: DWORD; dwFlags: DWORD; const lpMultiByteStr: LPCSTR; cchMultiByte: Integer; lpWideCharStr: LPWSTR; cchWideChar: Integer): Integer;
 function WideCharToMultiByte(CodePage: DWORD; dwFlags: DWORD; lpWideCharStr: LPWSTR; cchWideChar: Integer; lpMultiByteStr: LPSTR; cchMultiByte: Integer; lpDefaultChar: LPCSTR; lpUsedDefaultChar: PBOOL): Integer;
-function CompareString(Locale: LCID; dwCmpFlags: DWORD; lpString1: PChar; cchCount1: Integer; lpString2: PChar; cchCount2: Integer): Integer;
+function CompareString(Locale: LCID; dwCmpFlags: DWORD; lpString1: PAnsiChar; cchCount1: Integer; lpString2: PAnsiChar; cchCount2: Integer): Integer;
 function EnumSystemCodePages(lpCodePageEnumProc: TFNCodepageEnumProc; dwFlags: DWORD): BOOL;
 function EnumSystemLocales(lpLocaleEnumProc: TFNLocaleEnumProc; dwFlags: DWORD): BOOL;
 function GetUserDefaultLCID: LCID;
@@ -270,7 +270,7 @@ procedure SetLastError(Value: Integer);
 
 implementation
 
-{$ifndef WINDOWS}
+{$ifndef MSWINDOWS}
 {$ifdef FPC}
 uses
   unix;
@@ -506,7 +506,7 @@ end;
 
 {$ifdef HUNGARIAN}
 
-procedure OemHunHun(AnsiDst: PChar; cchDstLength: DWORD);
+procedure OemHunHun(AnsiDst: PAnsiChar; cchDstLength: DWORD);
 var
   Count: DWORD;
 begin
@@ -539,7 +539,7 @@ begin
   end;
 end;
 
-procedure AnsiHunHun(AnsiDst: PChar; cchDstLength: DWORD);
+procedure AnsiHunHun(AnsiDst: PAnsiChar; cchDstLength: DWORD);
 var
   Count: DWORD;
 begin
@@ -574,21 +574,21 @@ end;
 
 {$endif}
 
-function OemToChar(lpszSrc: PChar; lpszDst: PChar): BOOL;
+function OemToChar(lpszSrc: PAnsiChar; lpszDst: PAnsiChar): BOOL;
 begin
   if lpszDst <> lpszSrc then
     StrCopy(lpszDst, lpszSrc);
   Result := true;
 end;
 
-function CharToOem(lpszSrc: PChar; lpszDst: PChar): BOOL;
+function CharToOem(lpszSrc: PAnsiChar; lpszDst: PAnsiChar): BOOL;
 begin
   if lpszDst <> lpszSrc then
     StrCopy(lpszDst, lpszSrc);
   Result := true;
 end;
 
-function OemToCharBuff(lpszSrc: PChar; lpszDst: PChar; cchDstLength: DWORD): BOOL;
+function OemToCharBuff(lpszSrc: PAnsiChar; lpszDst: PAnsiChar; cchDstLength: DWORD): BOOL;
 begin
   if lpszDst <> lpszSrc then
     StrLCopy(lpszDst, lpszSrc, cchDstLength);
@@ -598,7 +598,7 @@ begin
   Result := true;
 end;
 
-function CharToOemBuff(lpszSrc: PChar; lpszDst: PChar; cchDstLength: DWORD): BOOL;
+function CharToOemBuff(lpszSrc: PAnsiChar; lpszDst: PAnsiChar; cchDstLength: DWORD): BOOL;
 begin
   if lpszDst <> lpszSrc then
     StrLCopy(lpszDst, lpszSrc, cchDstLength);
@@ -630,7 +630,7 @@ begin
   System.Move(TempA, lpMultiByteStr^, Result);
 end;
 
-function CompareString(Locale: LCID; dwCmpFlags: DWORD; lpString1: PChar; cchCount1: Integer; lpString2: PChar; cchCount2: Integer): Integer;
+function CompareString(Locale: LCID; dwCmpFlags: DWORD; lpString1: PAnsiChar; cchCount1: Integer; lpString2: PAnsiChar; cchCount2: Integer): Integer;
 begin
   Result := StrLComp(lpString1, lpString2, cchCount1) + 2;
   if Result > 2 then Result := 3;

@@ -21,7 +21,7 @@ type
   TPageInfo = record
     TimeStamp: Cardinal;
     Modified: Boolean;
-    Data: Char;
+    Data: AnsiChar;
   end;
 
   TCachedFile = class(TPagedFile)

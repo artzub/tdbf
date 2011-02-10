@@ -42,14 +42,14 @@ type
 //====================================================================
   PAfterHdrVII = ^rAfterHdrVII;
   rAfterHdrVII = packed record
-    LanguageDriverName  : array[32..63] of Char;
+    LanguageDriverName  : array[32..63] of AnsiChar;
     Dummy               : array[64..67] of Byte;
   end;
 //====================================================================
   PFieldDescIII = ^rFieldDescIII;
   rFieldDescIII = packed record
-    FieldName       : array[0..10] of Char;
-    FieldType       : Char;     // 11
+    FieldName       : array[0..10] of AnsiChar;
+    FieldType       : AnsiChar;     // 11
     FieldOffset     : Integer;  // 12..15   only applicable to foxpro databases
     FieldSize       : Byte;     // 16
     FieldPrecision  : Byte;     // 17
@@ -59,8 +59,8 @@ type
 //====================================================================
 // OH 2000-11-15 dBase7 support. Header Update (add fields like Next AutoInc Value)
   rFieldDescVII = packed record
-    FieldName      : array [0..31] of Char;
-    FieldType      : Char;  // 32
+    FieldName      : array [0..31] of AnsiChar;
+    FieldType      : AnsiChar;  // 32
     FieldSize      : Byte;  // 33
     FieldPrecision : Byte;  // 34
     Reserved1      : Word;  // 35-36
@@ -97,7 +97,7 @@ type
                           //            06 Database constraint
     FieldType    : Byte;  // 5      ; Field Type:
                           //            00 No type - constraint
-                          //            01 Char
+                          //            01 AnsiChar
                           //            02 Numeric
                           //            03 Memo
                           //            04 Logical
@@ -110,7 +110,7 @@ type
                           //            13 Double
                           //            14 AutoIncrement (not settable from the Inspector)
     IsConstraint : Byte;  // 6      ; 0x00 if the array element is a constraint, 0x02 otherwise.
-    Reserved     : array[7..10] of Char;
+    Reserved     : array[7..10] of AnsiChar;
     DataOffset   : Word;  // 11..12 ; Offset from the start of this structure to the data for the property. The Required property has no data associated with it, so it is always 0.
     DataSize     : Word;  // 13..14 ; Width of database field associated with the property, and hence size of the data (includes 0 terminator in the case of a constraint).
   end;

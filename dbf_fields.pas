@@ -16,12 +16,12 @@ type
 
   TDbfFieldDef = class(TCollectionItem)
   private
-    FFieldName: string;
+    FFieldName: AnsiString;
     FFieldType: TFieldType;
     FNativeFieldType: TDbfFieldType;
-    FDefaultBuf: PChar;
-    FMinBuf: PChar;
-    FMaxBuf: PChar;
+    FDefaultBuf: PAnsiChar;
+    FMinBuf: PAnsiChar;
+    FMaxBuf: PAnsiChar;
     FSize: Integer;
     FPrecision: Integer;
     FHasDefault: Boolean;
@@ -60,9 +60,9 @@ type
     procedure AllocBuffers;
     function  IsBlob: Boolean;
 
-    property DefaultBuf: PChar read FDefaultBuf;
-    property MinBuf: PChar read FMinBuf;
-    property MaxBuf: PChar read FMaxBuf;
+    property DefaultBuf: PAnsiChar read FDefaultBuf;
+    property MinBuf: PAnsiChar read FMinBuf;
+    property MaxBuf: PAnsiChar read FMaxBuf;
     property HasDefault: Boolean read FHasDefault write FHasDefault;
     property HasMin: Boolean read FHasMin write FHasMin;
     property HasMax: Boolean read FHasMax write FHasMax;
@@ -71,7 +71,7 @@ type
     property IsLockField: Boolean read FIsLockField write FIsLockField;
     property CopyFrom: Integer read FCopyFrom write FCopyFrom;
   published
-    property FieldName: string     read FFieldName write FFieldName;
+    property FieldName: AnsiString read FFieldName write FFieldName;
     property FieldType: TFieldType read FFieldType write SetFieldType;
     property NativeFieldType: TDbfFieldType read FNativeFieldType write SetNativeFieldType;
     property NullPosition: integer read FNullPosition write FNullPosition;
@@ -309,7 +309,7 @@ procedure TDbfFieldDef.SetNativeFieldType(lFieldType: tDbfFieldType);
 begin
   // get uppercase field type
   if (lFieldType >= 'a') and (lFieldType <= 'z') then
-    lFieldType := Chr(Ord(lFieldType)-32);
+    lFieldType := AnsiChar(Chr(Ord(lFieldType)-32));
   FNativeFieldType := lFieldType;
   NativeToVCL;
   CheckSizePrecision;

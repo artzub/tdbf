@@ -48,8 +48,8 @@ type
     FIndexNames: TStringList;
     FIndexFiles: TList;
     FDbfVersion: TXBaseVersion;
-    FPrevBuffer: PChar;
-    FDefaultBuffer: PChar;
+    FPrevBuffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PChar{$ENDIF};
+    FDefaultBuffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PChar{$ENDIF};
     FRecordBufferSize: Integer;
     FLockUserLen: DWORD;
     FFileCodePage: Cardinal;
@@ -70,13 +70,13 @@ type
     function  GetMemoExt: string;
 
     function GetLanguageId: Integer;
-    function GetLanguageStr: string;
+    function GetLanguageStr: AnsiString;
     
   protected
     procedure ConstructFieldDefs;
     procedure InitDefaultBuffer;
     procedure UpdateNullField(Buffer: Pointer; AFieldDef: TDbfFieldDef; Action: TUpdateNullField);
-    procedure WriteLockInfo(Buffer: PChar);
+    procedure WriteLockInfo(Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 
   public
     constructor Create;
@@ -97,9 +97,9 @@ type
     procedure CloseIndex(AIndexName: string);
     procedure RepageIndex(AIndexFile: string);
     procedure CompactIndex(AIndexFile: string);
-    function  Insert(Buffer: PChar): integer;
+    function  Insert(Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF}): integer;
     procedure WriteHeader; override;
-    procedure ApplyAutoIncToBuffer(DestBuf: PChar);     // dBase7 support. Writeback last next-autoinc value
+    procedure ApplyAutoIncToBuffer(DestBuf: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});     // dBase7 support. Writeback last next-autoinc value
     procedure FastPackTable;
     procedure RestructureTable(DbfFieldDefs: TDbfFieldDefs; Pack: Boolean);
     procedure Rename(DestFileName: string; NewIndexFileNames: TStrings; DeleteFiles: boolean);
@@ -109,13 +109,13 @@ type
     function  GetFieldDataFromDef(AFieldDef: TDbfFieldDef; DataType: TFieldType; 
       Src, Dst: Pointer; NativeFormat: boolean): Boolean;
     procedure SetFieldData(Column: Integer; DataType: TFieldType; Src,Dst: Pointer; NativeFormat: boolean);
-    procedure InitRecord(DestBuf: PChar);
+    procedure InitRecord(DestBuf: PAnsiChar);
     procedure PackIndex(lIndexFile: TIndexFile; AIndexName: string);
     procedure RegenerateIndexes;
-    procedure LockRecord(RecNo: Integer; Buffer: PChar);
-    procedure UnlockRecord(RecNo: Integer; Buffer: PChar);
-    procedure RecordDeleted(RecNo: Integer; Buffer: PChar);
-    procedure RecordRecalled(RecNo: Integer; Buffer: PChar);
+    procedure LockRecord(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
+    procedure UnlockRecord(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
+    procedure RecordDeleted(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
+    procedure RecordRecalled(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 
     property MemoFile: TMemoFile read FMemoFile;
     property FieldDefs: TDbfFieldDefs read FFieldDefs;
@@ -123,12 +123,12 @@ type
     property IndexFiles: TList read FIndexFiles;
     property MdxFile: TIndexFile read FMdxFile;
     property LanguageId: Integer read GetLanguageId;
-    property LanguageStr: string read GetLanguageStr;
+    property LanguageStr: AnsiString read GetLanguageStr;
     property FileCodePage: Cardinal read FFileCodePage;
     property UseCodePage: Cardinal read FUseCodePage write FUseCodePage;
     property FileLangId: Byte read FFileLangId write FFileLangId;
     property DbfVersion: TXBaseVersion read FDbfVersion write FDbfVersion;
-    property PrevBuffer: PChar read FPrevBuffer;
+    property PrevBuffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PChar{$ENDIF} read FPrevBuffer;
     property ForceClose: Boolean read FForceClose;
     property CopyDateTimeAsString: Boolean read FCopyDateTimeAsString write FCopyDateTimeAsString;
     property DateTimeHandling: TDateTimeHandling read FDateTimeHandling write FDateTimeHandling;
@@ -199,7 +199,7 @@ uses
 {$ifdef SUPPORT_MATH_UNIT}
   Math,
 {$endif}
-  dbf_str, dbf_lang, dbf_prssupp, dbf_prsdef;
+  dbf_str, dbf_lang;
 
 const
   sDBF_DEC_SEP = '.';
@@ -213,25 +213,25 @@ const
 //====================================================================
 function DbfStrToFloat(const Src: PChar; const Size: Integer): Extended;
 var
-  iPos: PChar;
+  iPos: PAnsiChar;
   eValue: extended;
-  endChar: Char;
+  endChar: AnsiChar;
 begin
   // temp null-term string
-  endChar := (Src + Size)^;
-  (Src + Size)^ := #0;
+  endChar := (PAnsiChar(Src) + Size)^;
+  (PAnsiChar(Src) + Size)^ := #0;
   // we only have to convert if decimal separator different
   if DecimalSeparator <> sDBF_DEC_SEP then
   begin
     // search dec sep
-    iPos := StrScan(Src, sDBF_DEC_SEP);
+    iPos := StrScan(PAnsiChar(Src), AnsiChar(sDBF_DEC_SEP));
     // replace
     if iPos <> nil then
-      iPos^ := DecimalSeparator;
+      iPos^ := AnsiChar(DecimalSeparator);
   end else
     iPos := nil;
   // convert to double
-  if TextToFloat(Src, eValue {$ifndef VER1_0}, fvExtended{$endif}) then
+  if TextToFloat(PAnsiChar(Src), eValue {$ifndef VER1_0}, fvExtended{$endif}) then
     Result := eValue
   else
     Result := 0;
@@ -239,7 +239,7 @@ begin
   if iPos <> nil then
     iPos^ := sDBF_DEC_SEP;
   // restore Char of null-term
-  (Src + Size)^ := endChar;
+  (PAnsiChar(Src) + Size)^ := endChar;
 end;
 
 procedure FloatToDbfStr(const Val: Extended; const Size, Precision: Integer; const Dest: PChar);
@@ -249,7 +249,7 @@ var
   iPos: PChar;
 begin
   // convert to temporary buffer
-  resLen := FloatToText(@Buffer[0], Val, {$ifndef FPC_VERSION}fvExtended,{$endif} ffFixed, Size, Precision);
+  resLen := FloatToText(PWideChar(@Buffer[0]), Val, {$ifndef FPC_VERSION}fvExtended,{$endif} ffFixed, Size, Precision);
   // prevent overflow in destination buffer
   if resLen > Size then
     resLen := Size;
@@ -270,19 +270,19 @@ end;
 
 function GetIntFromStrLength(Src: Pointer; Size: Integer; Default: Integer): Integer;
 var
-  endChar: Char;
+  endChar: AnsiChar;
   Code: Integer;
 begin
   // save Char at pos term. null
-  endChar := (PChar(Src) + Size)^;
-  (PChar(Src) + Size)^ := #0;
+  endChar := (PAnsiChar(Src) + Size)^;
+  (PAnsiChar(Src) + Size)^ := #0;
   // convert
-  Val(PChar(Src), Result, Code);
+  Val(PAnsiChar(Src), Result, Code);
   // check success
   if Code <> 0 then
     Result := Default;
   // restore prev. ending Char
-  (PChar(Src) + Size)^ := endChar;
+  (PAnsiChar(Src) + Size)^ := endChar;
 end;
 
 //====================================================================
@@ -327,7 +327,7 @@ var
   I: Integer;
   deleteLink: Boolean;
   lModified: boolean;
-  LangStr: PChar;
+  LangStr: PAnsiChar;
   version: byte;
 begin
   // check if not already opened
@@ -662,7 +662,8 @@ begin
         lFieldDescVII.FieldType := lFieldDef.NativeFieldType;
         lFieldDescVII.FieldSize := lSize;
         lFieldDescVII.FieldPrecision := lPrec;
-        lFieldDescVII.NextAutoInc := SwapIntLE(lFieldDef.AutoInc);
+        // TODO: bug-endianness
+        lFieldDescVII.NextAutoInc := lFieldDef.AutoInc;
         //lFieldDescVII.MDXFlag := ???
       end else begin
         FillChar(lFieldDescIII, SizeOf(lFieldDescIII), #0);
@@ -670,11 +671,12 @@ begin
         lFieldDescIII.FieldType := lFieldDef.NativeFieldType;
         lFieldDescIII.FieldSize := lSize;
         lFieldDescIII.FieldPrecision := lPrec;
+        // TODO: bug-endianness
         if FDbfVersion = xFoxPro then
-          lFieldDescIII.FieldOffset := SwapIntLE(lFieldOffset);
-        if (PDbfHdr(Header)^.VerDBF = $02) and (lFieldDef.NativeFieldType in ['0', 'Y', 'T', 'O', '+']) then
+          lFieldDescIII.FieldOffset := lFieldOffset;
+        if (PDbfHdr(Header)^.VerDBF = $02) and {$IFDEF DELPHI_2009}CharInSet{$ENDIF}(lFieldDef.NativeFieldType {$IFDEF DELPHI_2009},{$ELSE} in {$ENDIF}['0', 'Y', 'T', 'O', '+']) then
           PDbfHdr(Header)^.VerDBF := $30;
-        if (PDbfHdr(Header)^.VerDBF = $30) and (lFieldDef.NativeFieldType = '+') then
+        if (PDbfHdr(Header)^.VerDBF = $20) and {$IFDEF DELPHI_2009}CharInSet{$ENDIF}(lFieldDef.NativeFieldType {$IFDEF DELPHI_2009},{$ELSE} in {$ENDIF}['+']) then
           PDbfHdr(Header)^.VerDBF := $31;
       end;
 
@@ -807,8 +809,8 @@ var
   TempFieldDef: TDbfFieldDef;
   lSize,lPrec,I, lColumnCount: Integer;
   lAutoInc: Cardinal;
-  dataPtr: PChar;
-  lNativeFieldType: Char;
+  dataPtr: PAnsiChar;
+  lNativeFieldType: AnsiChar;
   lFieldName: string;
   lCanHoldNull: boolean;
   lCurrentNullPosition: integer;
@@ -841,16 +843,17 @@ begin
       if FDbfVersion >= xBaseVII then
       begin
         ReadRecord(I, @lFieldDescVII);
-        lFieldName := AnsiUpperCase(PChar(@lFieldDescVII.FieldName[0]));
+        lFieldName := AnsiUpperCase(PAnsiChar(@lFieldDescVII.FieldName[0]));
         lSize := lFieldDescVII.FieldSize;
         lPrec := lFieldDescVII.FieldPrecision;
         lNativeFieldType := lFieldDescVII.FieldType;
-        lAutoInc := SwapIntLE(lFieldDescVII.NextAutoInc);
+        // TODO: big-endianness
+        lAutoInc := lFieldDescVII.NextAutoInc;
         if lNativeFieldType = '+' then
           FAutoIncPresent := true;
       end else begin
         ReadRecord(I, @lFieldDescIII);
-        lFieldName := AnsiUpperCase(PChar(@lFieldDescIII.FieldName[0]));
+        lFieldName := AnsiUpperCase(PAnsiChar(@lFieldDescIII.FieldName[0]));
         lSize := lFieldDescIII.FieldSize;
         lPrec := lFieldDescIII.FieldPrecision;
         lNativeFieldType := lFieldDescIII.FieldType;
@@ -985,7 +988,7 @@ begin
   Result := PDbfHdr(Header)^.Language;
 end;
 
-function TDbfFile.GetLanguageStr: String;
+function TDbfFile.GetLanguageStr: AnsiString;
 begin
   if FDbfVersion >= xBaseVII then
     Result := PAfterHdrVII(PChar(Header) + SizeOf(rDbfHdr))^.LanguageDriverName;
@@ -998,7 +1001,7 @@ end;
 procedure TDbfFile.FastPackTable;
 var
   iDel,iNormal: Integer;
-  pDel,pNormal: PChar;
+  pDel,pNormal: PAnsiChar;
 
   function FindFirstDel: Boolean;
   begin
@@ -1046,7 +1049,7 @@ begin
       begin
         // but is not anymore
         WriteRecord(iDel, pNormal);
-        PChar(pNormal)^ := '*';
+        PAnsiChar(pNormal)^ := '*';
         WriteRecord(iNormal, pNormal);
       end else begin
         // Cannot found a record after iDel so iDel must be deleted
@@ -1133,7 +1136,8 @@ var
   OldIndexFiles: TStrings;
   IndexName, NewBaseName: string;
   I, lRecNo, lFieldNo, lFieldSize, lBlobPageNo, lWRecNo, srcOffset, dstOffset: Integer;
-  pBuff, pDestBuff: PChar;
+  pBuff,
+  pDestBuff: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PChar{$ENDIF};
   RestructFieldInfo: PRestructFieldInfo;
   BlobStream: TMemoryStream;
 begin
@@ -1187,7 +1191,7 @@ begin
     if TempDstDef.CopyFrom >= 0 then
     begin
       TempSrcDef := FFieldDefs.Items[TempDstDef.CopyFrom];
-      if TempDstDef.NativeFieldType in ['F', 'N'] then
+      if {$IFDEF DELPHI_2009}CharInSet{$ENDIF}(TempDstDef.NativeFieldType {$IFDEF DELPHI_2009},{$ELSE} in {$ENDIF}['F', 'N']) then
       begin
         // get minimum field length
         lFieldSize := Min(TempSrcDef.Precision, TempDstDef.Precision) +
@@ -1195,7 +1199,7 @@ begin
             TempDstDef.Size - TempDstDef.Precision);
         // if one has dec separator, but other not, we lose one digit
         if (TempDstDef.Precision > 0) xor 
-          ((TempSrcDef.NativeFieldType in ['F', 'N']) and (TempSrcDef.Precision > 0)) then
+          ({$IFDEF DELPHI_2009}CharInSet{$ENDIF}(TempSrcDef.NativeFieldType {$IFDEF DELPHI_2009},{$ELSE} in {$ENDIF}['F', 'N']) and (TempSrcDef.Precision > 0)) then
           Dec(lFieldSize);
         // should not happen, but check nevertheless (maybe corrupt data)
         if lFieldSize < 0 then
@@ -1264,12 +1268,12 @@ begin
       // read record from original dbf
       ReadRecord(lRecNo, pBuff);
       // copy record?
-      if (pBuff^ <> '*') or not Pack then
+      if ({$IFDEF DELPHI_2009}Char(pBuff[0]){$ELSE}pBuff^{$ENDIF} <> '*') or not Pack then
       begin
         // if restructure, initialize dest
         if DbfFieldDefs <> nil then
         begin
-          DestDbfFile.InitRecord(pDestBuff);
+          DestDbfFile.InitRecord(PAnsiChar(pDestBuff));
           // copy deleted mark (the first byte)
           pDestBuff^ := pBuff^;
         end;
@@ -1474,14 +1478,14 @@ begin
   if (FNullField <> nil) and (Dst = nil) and (AFieldDef.NullPosition >= 0) then
   begin
     // go to byte with null flag of this field
-    Src := PChar(Src) + FNullField.Offset + (AFieldDef.NullPosition shr 3);
+    Src := PAnsiChar(Src) + FNullField.Offset + (AFieldDef.NullPosition shr 3);
     Result := (PByte(Src)^ and (1 shl (AFieldDef.NullPosition and $7))) <> 0;
     exit;
   end;
   
   FieldOffset := AFieldDef.Offset;
   FieldSize := AFieldDef.Size;
-  Src := PChar(Src) + FieldOffset;
+  Src := PAnsiChar(Src) + FieldOffset;
   asciiContents := false;
   Result := true;
   // field types that are binary and of which the fieldsize should not be truncated
@@ -1493,23 +1497,23 @@ begin
           Result := PDWord(Src)^ <> 0;
           if Result and (Dst <> nil) then
           begin
-            PDWord(Dst)^ := SwapIntBE(PDWord(Src)^);
+            PDWord(Dst)^ := SwapInt(PDWord(Src)^);
             if Result then
               PInteger(Dst)^ := Integer(PDWord(Dst)^ xor $80000000);
           end;
         end else begin
           Result := true;
           if Dst <> nil then
-            PInteger(Dst)^ := SwapIntLE(PInteger(Src)^);
+            PInteger(Dst)^ := PInteger(Src)^;
         end;
       end;
     'O':
       begin
 {$ifdef SUPPORT_INT64}
-        Result := PInt64(Src)^ <> 0;
+        Result := (PInt64(Src)^ <> 0);
         if Result and (Dst <> nil) then
         begin
-          SwapInt64BE(Src, Dst);
+          SwapInt64(Src, Dst);
           if PInt64(Dst)^ > 0 then
             PInt64(Dst)^ := not PInt64(Dst)^
           else
@@ -1522,7 +1526,7 @@ begin
         Result := (PInteger(Src)^ <> 0) and (PInteger(PChar(Src)+4)^ <> 0);
         if Result and (Dst <> nil) then
         begin
-          SwapInt64BE(Src, Dst);
+          SwapInt64(Src, Dst);
           if FDateTimeHandling = dtBDETimeStamp then
             date := BDETimeStampToDateTime(PDouble(Dst)^)
           else
@@ -1533,15 +1537,11 @@ begin
     'T':
       begin
         // all binary zeroes -> empty datetime
-{$ifdef SUPPORT_INT64}        
-        Result := PInt64(Src)^ <> 0;
-{$else}        
         Result := (PInteger(Src)^ <> 0) or (PInteger(PChar(Src)+4)^ <> 0);
-{$endif}        
         if Result and (Dst <> nil) then
         begin
-          timeStamp.Date := SwapIntLE(PInteger(Src)^) - JulianDateDelta;
-          timeStamp.Time := SwapIntLE(PInteger(PChar(Src)+4)^);
+          timeStamp.Date := PInteger(Src)^ - JulianDateDelta;
+          timeStamp.Time := PInteger(PChar(Src)+4)^;
           date := TimeStampToDateTime(timeStamp);
           SaveDateToDst;
         end;
@@ -1552,9 +1552,17 @@ begin
         Result := true;
         if Dst <> nil then
         begin
-          PInt64(Dst)^ := SwapIntLE(PInt64(Src)^);
-          if DataType = ftCurrency then
-            PDouble(Dst)^ := PInt64(Dst)^ / 10000.0;
+          // TODO: data is little endian;
+          case DataType of
+            ftCurrency:
+            begin
+              PDouble(Dst)^ := PInt64(Src)^ / 10000.0;
+            end;
+            ftBCD:
+            begin
+              PCurrency(Dst)^ := PCurrency(Src)^;
+            end;
+          end;
         end;
 {$endif}
       end;
@@ -1564,7 +1572,7 @@ begin
         begin
           Result := true;
           if Dst <> nil then
-            PInt64(Dst)^ := SwapIntLE(PInt64(Src)^);
+            PDouble(Dst)^ := PDouble(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1574,7 +1582,7 @@ begin
         begin
           Result := PInteger(Src)^ <> 0;
           if Dst <> nil then
-            PInteger(Dst)^ := SwapIntLE(PInteger(Src)^);
+            PInteger(Dst)^ := PInteger(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1583,7 +1591,7 @@ begin
   end;
   if asciiContents then
   begin
-    //    SetString(s, PChar(Src) + FieldOffset, FieldSize );
+    //    SetString(s, PAnsiChar(Src) + FieldOffset, FieldSize );
     //    s := {TrimStr(s)} TrimRight(s);
     // truncate spaces at end by shortening fieldsize
     while (FieldSize > 0) and ((PChar(Src) + FieldSize - 1)^ = ' ') do
@@ -1655,12 +1663,12 @@ begin
           SaveDateToDst;
         end;
       ftString:
-        StrLCopy(Dst, Src, FieldSize);
+        StrLCopy(PAnsiChar(Dst), PAnsiChar(Src), FieldSize);
     end else begin
       case DataType of
       ftString:
         if Dst <> nil then
-          PChar(Dst)[0] := #0;
+          PAnsiChar(Dst)[0] := #0;
       end;
     end;
   end;
@@ -1735,7 +1743,7 @@ begin
     UpdateNullField(Dst, TempFieldDef, SrcNilToUpdateNullField[Src = nil]);
 
   // copy field data to record buffer
-  Dst := PChar(Dst) + TempFieldDef.Offset;
+  Dst := PAnsiChar(Dst) + TempFieldDef.Offset;
   asciiContents := false;
   case TempFieldDef.NativeFieldType of
     '+', 'I':
@@ -1746,12 +1754,12 @@ begin
             IntValue := 0
           else
             IntValue := PDWord(Src)^ xor $80000000;
-          PDWord(Dst)^ := SwapIntBE(IntValue);
+          PDWord(Dst)^ := SwapInt(IntValue);
         end else begin
           if Src = nil then
             PDWord(Dst)^ := 0
           else
-            PDWord(Dst)^ := SwapIntLE(PDWord(Src)^);
+            PDWord(Dst)^ := PDWord(Src)^;
         end;
       end;
     'O':
@@ -1762,10 +1770,10 @@ begin
           PInt64(Dst)^ := 0;
         end else begin
           if PDouble(Src)^ < 0 then
-            PInt64(Dst)^ := not PInt64(Src)^
+            PLargeInt(Dst)^ := not PLargeInt(Src)^
           else
             PDouble(Dst)^ := (PDouble(Src)^) * -1;
-          SwapInt64BE(Dst, Dst);
+          SwapInt64(Dst, Dst);
         end;
 {$endif}
       end;
@@ -1773,17 +1781,13 @@ begin
       begin
         if Src = nil then
         begin
-{$ifdef SUPPORT_INT64}
-          PInt64(Dst)^ := 0;
-{$else}          
           PInteger(Dst)^ := 0;
           PInteger(PChar(Dst)+4)^ := 0;
-{$endif}
         end else begin
           LoadDateFromSrc;
           if FDateTimeHandling = dtBDETimeStamp then
             date := DateTimeToBDETimeStamp(date);
-          SwapInt64BE(@date, Dst);
+          SwapInt64(@date, Dst);
         end;
       end;
     'T':
@@ -1791,17 +1795,13 @@ begin
         // all binary zeroes -> empty datetime
         if Src = nil then
         begin
-{$ifdef SUPPORT_INT64}
-          PInt64(Dst)^ := 0;
-{$else}          
           PInteger(Dst)^ := 0;
           PInteger(PChar(Dst)+4)^ := 0;
-{$endif}          
         end else begin
           LoadDateFromSrc;
           timeStamp := DateTimeToTimeStamp(date);
-          PInteger(Dst)^ := SwapIntLE(timeStamp.Date + JulianDateDelta);
-          PInteger(PChar(Dst)+4)^ := SwapIntLE(timeStamp.Time);
+          PInteger(Dst)^ := timeStamp.Date + JulianDateDelta;
+          PInteger(PChar(Dst)+4)^ := timeStamp.Time;
         end;
       end;
     'Y':
@@ -1809,7 +1809,7 @@ begin
 {$ifdef SUPPORT_INT64}
         if Src = nil then
         begin
-          PInt64(Dst)^ := 0;
+          PInt64(Dst)^ := 0
         end else begin
           case DataType of
             ftCurrency:
@@ -1817,8 +1817,8 @@ begin
             ftBCD:
               PCurrency(Dst)^ := PCurrency(Src)^;
           end;
-          SwapInt64LE(Dst, Dst);
         end;
+        // TODO: data is little endian
 {$endif}
       end;
     'B':
@@ -1828,7 +1828,7 @@ begin
           if Src = nil then
             PDouble(Dst)^ := 0
           else
-            SwapInt64LE(Src, Dst);
+            PDouble(Dst)^ := PDouble(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1839,7 +1839,7 @@ begin
           if Src = nil then
             PInteger(Dst)^ := 0
           else
-            PInteger(Dst)^ := SwapIntLE(PInteger(Src)^);
+            PInteger(Dst)^ := PInteger(Src)^;
         end else
           asciiContents := true;
       end;
@@ -1856,9 +1856,9 @@ begin
         ftBoolean:
           begin
             if PWord(Src)^ <> 0 then
-              PChar(Dst)^ := 'T'
+              PAnsiChar(Dst)^ := 'T'
             else
-              PChar(Dst)^ := 'F';
+              PAnsiChar(Dst)^ := 'F';
           end;
         ftSmallInt:
           GetStrFromInt_Width(PSmallInt(Src)^, FieldSize, PChar(Dst), #32);
@@ -1893,7 +1893,7 @@ begin
         ftString:
           begin
             // copy data
-            Len := StrLen(Src);
+            Len := StrLen(PAnsiChar(Src));
             if Len > FieldSize then
               Len := FieldSize;
             Move(Src^, Dst^, Len);
@@ -1926,7 +1926,7 @@ begin
   begin
     TempFieldDef := FFieldDefs.Items[I];
     // binary field? (foxpro memo fields are binary, but dbase not)
-    if (TempFieldDef.NativeFieldType in ['I', 'O', '@', '+', '0', 'Y'])
+    if {$IFDEF DELPHI_2009}CharInSet{$ENDIF}(TempFieldDef.NativeFieldType {$IFDEF DELPHI_2009},{$ELSE} in {$ENDIF}['I', 'O', '@', '+', '0', 'Y'])
         or ((TempFieldDef.NativeFieldType = 'M') and (TempFieldDef.Size = 4)) then
       FillChar(PChar(FDefaultBuffer+TempFieldDef.Offset)^, TempFieldDef.Size, 0);
     // copy default value?
@@ -1940,14 +1940,14 @@ begin
   end;
 end;
 
-procedure TDbfFile.InitRecord(DestBuf: PChar);
+procedure TDbfFile.InitRecord(DestBuf: PAnsiChar);
 begin
   if FDefaultBuffer = nil then
     InitDefaultBuffer;
   Move(FDefaultBuffer^, DestBuf^, RecordSize);
 end;
 
-procedure TDbfFile.ApplyAutoIncToBuffer(DestBuf: PChar);
+procedure TDbfFile.ApplyAutoIncToBuffer(DestBuf: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 var
   TempFieldDef: TDbfFieldDef;
   I, NextVal, lAutoIncOffset: {LongWord} Cardinal;    {Delphi 3 does not know LongWord?}
@@ -1970,19 +1970,18 @@ begin
         // read current auto inc, from header or field, depending on sharing
         lAutoIncOffset := sizeof(rDbfHdr) + sizeof(rAfterHdrVII) + 
           FieldDescVII_AutoIncOffset + I * sizeof(rFieldDescVII);
+        // TODO: big-endianness
         if NeedLocks then
-        begin
-          ReadBlock(@NextVal, 4, lAutoIncOffset);
-          NextVal := SwapIntLE(NextVal);
-        end else
+          ReadBlock(@NextVal, 4, lAutoIncOffset)
+        else
           NextVal := TempFieldDef.AutoInc;
         // store to buffer, positive = high bit on, so flip it
-        PCardinal(DestBuf+TempFieldDef.Offset)^ := SwapIntBE(NextVal or $80000000);
+        PCardinal(DestBuf+TempFieldDef.Offset)^ := SwapInt(NextVal or $80000000);
         // increase
         Inc(NextVal);
         TempFieldDef.AutoInc := NextVal;
         // write new value to header buffer
-        PCardinal(FHeader+lAutoIncOffset)^ := SwapIntLE(NextVal);
+        PCardinal(FHeader+lAutoIncOffset)^ := NextVal;
       end;
     end;
 
@@ -2358,23 +2357,28 @@ begin
   end;
 end;
 
-function TDbfFile.Insert(Buffer: PChar): integer;
-type
-  TErrorContext = (ecNone, ecInsert, ecWriteIndex, ecWriteDbf);
+function TDbfFile.Insert(Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF}): integer;
 var
   newRecord: Integer;
   lIndex: TIndexFile;
+  error: Boolean;
 
-  procedure RollBackIndexesAndRaise(Count: Integer; ErrorContext: TErrorContext);
+  procedure RollBackIndexesAndRaise(HighIndex: Integer; IndexError: Boolean);
   var
     errorMsg: string;
     I: Integer;
   begin
     // rollback committed indexes
-    for I := 0 to Count-1 do
+    error := IndexError;
+    for I := 0 to HighIndex do
     begin
       lIndex := TIndexFile(FIndexFiles.Items[I]);
       lIndex.Delete(newRecord, Buffer);
+      if lIndex.WriteError then
+      begin
+        lIndex.ResetError;
+        error := true;
+      end;
     end;
 
     // reset any dbf file error
@@ -2382,17 +2386,15 @@ var
 
     // if part of indexes committed -> always index error msg
     // if error while rolling back index -> index error msg
-    case ErrorContext of
-      ecInsert: begin TIndexFile(FIndexFiles.Items[Count]).InsertError; exit; end;
-      ecWriteIndex: errorMsg := STRING_WRITE_INDEX_ERROR;
-      ecWriteDbf: errorMsg := STRING_WRITE_ERROR;
-    end;
+    if error then
+      errorMsg := STRING_WRITE_INDEX_ERROR
+    else
+      errorMsg := STRING_WRITE_ERROR;
     raise EDbfWriteError.Create(errorMsg);
   end;
 
 var
   I: Integer;
-  error: TErrorContext;
 begin
   // get new record index
   Result := 0;
@@ -2402,24 +2404,34 @@ begin
     Inc(newRecord);
   // write autoinc value
   ApplyAutoIncToBuffer(Buffer);
-  error := ecNone;
-  I := 0;
-  while I < FIndexFiles.Count do
+  // check indexes -> possible key violation
+  I := 0; error := false;
+  while (I < FIndexFiles.Count) and not error do
   begin
     lIndex := TIndexFile(FIndexFiles.Items[I]);
-    if not lIndex.Insert(newRecord, Buffer) then
-      error := ecInsert;
+    error := lIndex.CheckKeyViolation(Buffer);
+    Inc(I);
+  end;
+  // error occured while inserting? -> abort
+  if error then
+  begin
+    UnlockPage(newRecord);
+    lIndex.InsertError;
+    // don't have to exit -- unreachable code
+  end;
+
+  // no key violation, insert record into index(es)
+  for I := 0 to FIndexFiles.Count-1 do
+  begin
+    lIndex := TIndexFile(FIndexFiles.Items[I]);
+    lIndex.Insert(newRecord, Buffer);
     if lIndex.WriteError then
-      error := ecWriteIndex;
-    if error <> ecNone then
     begin
       // if there's an index write error, I shouldn't
       // try to write the dbf header and the new record,
       // but raise an exception right away
-      UnlockPage(newRecord);
-      RollBackIndexesAndRaise(I, ecWriteIndex);
+      RollBackIndexesAndRaise(I, True);
     end;
-    Inc(I);
   end;
 
   // indexes ok -> continue inserting
@@ -2442,8 +2454,7 @@ begin
     // At this point I should "roll back"
     // the already written index records.
     // if this fails, I'm in deep trouble!
-    UnlockPage(newRecord);
-    RollbackIndexesAndRaise(FIndexFiles.Count, ecWriteDbf);
+    RollbackIndexesAndRaise(FIndexFiles.Count-1, False);
   end;
 
   // write locking info
@@ -2467,12 +2478,12 @@ begin
     WriteHeader;
     UnlockPage(0);
     // roll back indexes too
-    RollbackIndexesAndRaise(FIndexFiles.Count, ecWriteDbf);
+    RollbackIndexesAndRaise(FIndexFiles.Count-1, False);
   end else
     Result := newRecord;
 end;
 
-procedure TDbfFile.WriteLockInfo(Buffer: PChar);
+procedure TDbfFile.WriteLockInfo(Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 //
 // *) assumes FHasLockField = true
 //
@@ -2486,19 +2497,20 @@ begin
   // set time
   DecodeDate(Now(), year, month, day);
   DecodeTime(Now(), hour, minute, sec, msec);
-  Buffer[lockoffset+2] := Char(hour);
-  Buffer[lockoffset+3] := Char(minute);
-  Buffer[lockoffset+4] := Char(sec);
+
+  Buffer[lockoffset+2] := {$IFNDEF DELPHI_2009}Char{$ENDIF}(hour);
+  Buffer[lockoffset+3] := {$IFNDEF DELPHI_2009}Char{$ENDIF}(minute);
+  Buffer[lockoffset+4] := {$IFNDEF DELPHI_2009}Char{$ENDIF}(sec);
   // set date
-  Buffer[lockoffset+5] := Char(year - 1900);
-  Buffer[lockoffset+6] := Char(month);
-  Buffer[lockoffset+7] := Char(day);
+  Buffer[lockoffset+5] := {$IFNDEF DELPHI_2009}Char{$ENDIF}(year - 1900);
+  Buffer[lockoffset+6] := {$IFNDEF DELPHI_2009}Char{$ENDIF}(month);
+  Buffer[lockoffset+7] := {$IFNDEF DELPHI_2009}Char{$ENDIF}(day);
   // set name
   FillChar(Buffer[lockoffset+8], FLockField.Size-8, ' ');
   Move(DbfGlobals.UserName[1], Buffer[lockoffset+8], FLockUserLen);
 end;
 
-procedure TDbfFile.LockRecord(RecNo: Integer; Buffer: PChar);
+procedure TDbfFile.LockRecord(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 begin
   if LockPage(RecNo, false) then
   begin
@@ -2518,29 +2530,16 @@ begin
     raise EDbfError.Create(STRING_RECORD_LOCKED);
 end;
 
-procedure TDbfFile.UnlockRecord(RecNo: Integer; Buffer: PChar);
+procedure TDbfFile.UnlockRecord(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 var
   I: Integer;
-  lIndex, lErrorIndex: TIndexFile;
+  lIndex: TIndexFile;
 begin
   // update indexes, possible key violation
-  I := 0;
-  while I < FIndexFiles.Count do
+  for I := 0 to FIndexFiles.Count - 1 do
   begin
     lIndex := TIndexFile(FIndexFiles.Items[I]);
-    if not lIndex.Update(RecNo, FPrevBuffer, Buffer) then
-    begin
-      // error -> rollback
-      lErrorIndex := lIndex;
-      while I > 0 do
-      begin
-        Dec(I);
-        lIndex := TIndexFile(FIndexFiles.Items[I]);
-        lIndex.Update(RecNo, Buffer, FPrevBuffer);
-      end;
-      lErrorIndex.InsertError;
-    end;
-    Inc(I);
+    lIndex.Update(RecNo, FPrevBuffer, Buffer);
   end;
   // write new record buffer, all keys ok
   WriteRecord(RecNo, Buffer);
@@ -2548,7 +2547,7 @@ begin
   UnlockPage(RecNo);
 end;
 
-procedure TDbfFile.RecordDeleted(RecNo: Integer; Buffer: PChar);
+procedure TDbfFile.RecordDeleted(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 var
   I: Integer;
   lIndex: TIndexFile;
@@ -2561,27 +2560,16 @@ begin
   end;
 end;
 
-procedure TDbfFile.RecordRecalled(RecNo: Integer; Buffer: PChar);
+procedure TDbfFile.RecordRecalled(RecNo: Integer; Buffer: {$IFDEF DELPHI_2009}TRecordBuffer{$ELSE}PAnsiChar{$ENDIF});
 var
   I: Integer;
-  lIndex, lErrorIndex: TIndexFile;
+  lIndex: TIndexFile;
 begin
   // notify indexes: record recalled
-  I := 0;
-  while I < FIndexFiles.Count do
+  for I := 0 to FIndexFiles.Count - 1 do
   begin
     lIndex := TIndexFile(FIndexFiles.Items[I]);
-    if not lIndex.RecordRecalled(RecNo, Buffer) then
-    begin
-      lErrorIndex := lIndex;
-      while I > 0 do
-      begin
-        Dec(I);
-        lIndex.RecordDeleted(RecNo, Buffer);
-      end;
-      lErrorIndex.InsertError;
-    end;
-    Inc(I);
+    lIndex.RecordRecalled(RecNo, Buffer);
   end;
 end;
 
@@ -2683,12 +2671,16 @@ end;
 var
   TempCodePageList: TList;
 
-// LPTSTR = PChar ok?
+// LPTSTR = PAnsiChar ok?
 
 function CodePagesProc(CodePageString: PChar): Cardinal; stdcall;
 begin
   // add codepage to list
+{$IFDEF DELPHI_2009}
+  TempCodePageList.Add(CodePageString);
+{$ELSE}
   TempCodePageList.Add(Pointer(GetIntFromStrLength(CodePageString, StrLen(CodePageString), -1)));
+{$ENDIF}
 
   // continue enumeration
   Result := 1;
@@ -2703,6 +2695,7 @@ begin
   FDefaultOpenCodePage := GetACP;
   // the following sets FDefaultCreateLangId
   DefaultCreateCodePage := GetACP;
+
   FCurrencyAsBCD := true;
   // determine which code pages are installed
   TempCodePageList := FCodePages;

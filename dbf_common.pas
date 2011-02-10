@@ -6,7 +6,7 @@ interface
 
 uses
   SysUtils, Classes, DB
-{$ifndef WINDOWS}
+{$ifndef MSWINDOWS}
   , Types, dbf_wtil
 {$ifdef KYLIX}
   , Libc
@@ -18,7 +18,7 @@ uses
 const
   TDBF_MAJOR_VERSION      = 6;
   TDBF_MINOR_VERSION      = 9;
-  TDBF_SUB_MINOR_VERSION  = 2;
+  TDBF_SUB_MINOR_VERSION  = 0;
 
   TDBF_TABLELEVEL_FOXPRO = 25;
 
@@ -28,7 +28,7 @@ type
   EDbfError = class (EDatabaseError);
   EDbfWriteError = class (EDbfError);
 
-  TDbfFieldType = char;
+  TDbfFieldType = AnsiChar;
 
   TXBaseVersion   = (xUnknown, xClipper, xBaseIII, xBaseIV, xBaseV, xFoxPro, xBaseVII);
   TSearchKeyType = (stEqual, stGreaterEqual, stGreater);
@@ -38,7 +38,15 @@ type
 //-------------------------------------
 
   PDateTime = ^TDateTime;
-{$ifndef FPC_VERSION}
+{$ifdef FPC_VERSION}
+  TDateTimeAlias = type TDateTime;
+  TDateTimeRec = record
+    case TFieldType of
+      ftDate: (Date: Longint);
+      ftTime: (Time: Longint);
+      ftDateTime: (DateTime: TDateTimeAlias);
+  end;
+{$else}
   PtrInt = Longint;
 {$endif}
 
@@ -46,9 +54,14 @@ type
   PCardinal = ^Cardinal;
   PDouble = ^Double;
   PString = ^String;
+  PDateTimeRec = ^TDateTimeRec;
+
+{$ifdef SUPPORT_INT64}
+  PLargeInt = ^Int64;
+{$endif}
 
 {$ifdef DELPHI_3}
-  dword = cardinal;
+  LongWord = cardinal;
 {$endif}
 
 //-------------------------------------
@@ -63,7 +76,7 @@ procedure FreeMemAndNil(var P: Pointer);
 
 {$ifndef SUPPORT_PATHDELIM}
 const
-{$ifdef WINDOWS}
+{$ifdef MSWINDOWS}
   PathDelim = '\';
 {$else}
   PathDelim = '/';
@@ -81,21 +94,24 @@ function GetCompleteFileName(const Base, FileName: string): string;
 function IsFullFilePath(const Path: string): Boolean; // full means not relative
 function DateTimeToBDETimeStamp(aDT: TDateTime): double;
 function BDETimeStampToDateTime(aBT: double): TDateTime;
+function  GetStrFromInt(Val: Integer; const Dst: PChar): Integer;
+procedure GetStrFromInt_Width(Val: Integer; const Width: Integer; const Dst: PChar; const PadChar: Char);
+{$ifdef SUPPORT_INT64}
+function  GetStrFromInt64(Val: Int64; const Dst: PChar): Integer;
+procedure GetStrFromInt64_Width(Val: Int64; const Width: Integer; const Dst: PChar; const PadChar: Char);
+{$endif}
 procedure FindNextName(BaseName: string; var OutName: string; var Modifier: Integer);
 {$ifdef USE_CACHE}
 function GetFreeMemory: Integer;
 {$endif}
 
-function SwapWordBE(const Value: word): word;
-function SwapWordLE(const Value: word): word;
-function SwapIntBE(const Value: dword): dword;
-function SwapIntLE(const Value: dword): dword;
-{$ifdef SUPPORT_INT64}
-procedure SwapInt64BE(Value, Result: Pointer); register;
-procedure SwapInt64LE(Value, Result: Pointer); register;
-{$endif}
+// OH 2000-11-15 dBase7 support. Swap Byte order for 4 and 8 Byte Integer
+function SwapWord(const Value: word): word;
+function SwapInt(const Value: LongWord): LongWord;
+{ SwapInt64 NOTE: do not call with same value for Value and Result ! }
+procedure SwapInt64(Value, Result: Pointer); register;
 
-function TranslateString(FromCP, ToCP: Cardinal; Src, Dest: PChar; Length: Integer): Integer;
+function TranslateString(FromCP, ToCP: Cardinal; Src, Dest: PAnsiChar; Length: Integer): Integer;
 
 // Returns a pointer to the first occurence of Chr in Str within the first Length characters
 // Does not stop at null (#0) terminator!
@@ -111,7 +127,7 @@ function Max(x, y: integer): integer;
 
 implementation
 
-{$ifdef WINDOWS}
+{$ifdef MSWINDOWS}
 uses
   Windows;
 {$endif}
@@ -137,11 +153,11 @@ end;
 
 function IsFullFilePath(const Path: string): Boolean; // full means not relative
 begin
-{$ifdef WINDOWS}
+{$ifdef MSWINDOWS}
   Result := Length(Path) > 1;
   if Result then
     // check for 'x:' or '\\' at start of path
-    Result := ((Path[2]=':') and (upcase(Path[1]) in ['A'..'Z']))
+    Result := ((Path[2]=':') and {$IFDEF DELPHI_2009}CharInSet{$ENDIF}(upcase(Path[1]) {$IFDEF DELPHI_2009},{$ELSE} in {$ENDIF}['A'..'Z']))
       or ((Path[1]='\') and (Path[2]='\'));
 {$else}  // Linux
   Result := Length(Path) > 0;
@@ -162,6 +178,89 @@ begin
   lpath := lpath + lfile;
   result := lpath;
 end;
+
+// it seems there is no pascal function to convert an integer into a PAnsiChar???
+
+procedure GetStrFromInt_Width(Val: Integer; const Width: Integer; const Dst: PChar; const PadChar: Char);
+var
+  Temp: array[0..10] of Char;
+  I, J: Integer;
+  NegSign: boolean;
+begin
+  {$I getstrfromint.inc}
+end;
+
+{$ifdef SUPPORT_INT64}
+
+procedure GetStrFromInt64_Width(Val: Int64; const Width: Integer; const Dst: PChar; const PadChar: Char);
+var
+  Temp: array[0..19] of Char;
+  I, J: Integer;
+  NegSign: boolean;
+begin
+  {$I getstrfromint.inc}
+end;
+
+{$endif}
+
+// it seems there is no pascal function to convert an integer into a PAnsiChar???
+// NOTE: in dbf_dbffile.pas there is also a convert routine, but is slightly different
+
+function GetStrFromInt(Val: Integer; const Dst: PChar): Integer;
+var
+  Temp: array[0..10] of Char;
+  I, J: Integer;
+begin
+  Val := Abs(Val);
+  // we'll have to store characters backwards first
+  I := 0;
+  J := 0;
+  repeat
+    Temp[I] := Chr((Val mod 10) + Ord('0'));
+    Val := Val div 10;
+    Inc(I);
+  until Val = 0;
+
+  // remember number of digits
+  Result := I;
+  // copy value, remember: stored backwards
+  repeat
+    Dst[J] := Temp[I-1];
+    Inc(J);
+    Dec(I);
+  until I = 0;
+  // done!
+end;
+
+{$ifdef SUPPORT_INT64}
+
+function GetStrFromInt64(Val: Int64; const Dst: PChar): Integer;
+var
+  Temp: array[0..19] of Char;
+  I, J: Integer;
+begin
+  Val := Abs(Val);
+  // we'll have to store characters backwards first
+  I := 0;
+  J := 0;
+  repeat
+    Temp[I] := Chr((Val mod 10) + Ord('0'));
+    Val := Val div 10;
+    Inc(I);
+  until Val = 0;
+
+  // remember number of digits
+  Result := I;
+  // copy value, remember: stored backwards
+  repeat
+    Dst[J] := Temp[I-1];
+    inc(J);
+    dec(I);
+  until I = 0;
+  // done!
+end;
+
+{$endif}
 
 function DateTimeToBDETimeStamp(aDT: TDateTime): double;
 var
@@ -225,7 +324,7 @@ end;
 
 function IncludeTrailingPathDelimiter(const Path: string): string;
 begin
-{$ifdef WINDOWS}
+{$ifdef MSWINDOWS}
   Result := IncludeTrailingBackslash(Path);
 {$else}
   Result := IncludeTrailingSlash(Path);
@@ -251,67 +350,31 @@ end;
 // Utility routines
 //====================================================================
 
-{$ifdef ENDIAN_LITTLE}
-function SwapWordBE(const Value: word): word;
-{$else}
-function SwapWordLE(const Value: word): word;
-{$endif}
+function SwapWord(const Value: word): word;
 begin
   Result := ((Value and $FF) shl 8) or ((Value shr 8) and $FF);
 end;
 
-{$ifdef ENDIAN_LITTLE}
-function SwapWordLE(const Value: word): word;
-{$else}
-function SwapWordBE(const Value: word): word;
-{$endif}
-begin
-  Result := Value;
-end;
-
-{$ifdef FPC}
-
-function SwapIntBE(const Value: dword): dword;
-begin
-  Result := BEtoN(Value);
-end;
-
-function SwapIntLE(const Value: dword): dword;
-begin
-  Result := LEtoN(Value);
-end;
-
-procedure SwapInt64BE(Value, Result: Pointer);
-begin
-  PInt64(Result)^ := BEtoN(PInt64(Value)^);
-end;
-
-procedure SwapInt64LE(Value, Result: Pointer);
-begin
-  PInt64(Result)^ := LEtoN(PInt64(Value)^);
-end;
-
-{$else}
 {$ifdef USE_ASSEMBLER_486_UP}
 
-function SwapIntBE(const Value: dword): dword; register; assembler;
+function SwapInt(const Value: LongWord): LongWord; register; assembler;
 asm
   BSWAP EAX;
 end;
 
-procedure SwapInt64BE(Value {EAX}, Result {EDX}: Pointer); register; assembler;
+procedure SwapInt64(Value {EAX}, Result {EDX}: Pointer); register; assembler;
 asm
-  MOV ECX, dword ptr [EAX] 
-  MOV EAX, dword ptr [EAX + 4] 
+  MOV ECX, LongWord ptr [EAX]
+  MOV EAX, LongWord ptr [EAX + 4]
   BSWAP ECX 
   BSWAP EAX 
-  MOV dword ptr [EDX+4], ECX 
-  MOV dword ptr [EDX], EAX 
+  MOV LongWord ptr [EDX+4], ECX
+  MOV LongWord ptr [EDX], EAX
 end;
 
 {$else}
 
-function SwapIntBE(const Value: Cardinal): Cardinal;
+function SwapInt(const Value: Cardinal): Cardinal;
 begin
   PByteArray(@Result)[0] := PByteArray(@Value)[3];
   PByteArray(@Result)[1] := PByteArray(@Value)[2];
@@ -319,7 +382,7 @@ begin
   PByteArray(@Result)[3] := PByteArray(@Value)[0];
 end;
 
-procedure SwapInt64BE(Value, Result: Pointer); register;
+procedure SwapInt64(Value, Result: Pointer); register;
 var
   PtrResult: PByteArray;
   PtrSource: PByteArray;
@@ -339,23 +402,7 @@ end;
 
 {$endif}
 
-function SwapIntLE(const Value: dword): dword;
-begin
-  Result := Value;
-end;
-
-{$ifdef SUPPORT_INT64}
-
-procedure SwapInt64LE(Value, Result: Pointer);
-begin
-  PInt64(Result)^ := PInt64(Value)^;
-end;
-
-{$endif}
-
-{$endif}
-
-function TranslateString(FromCP, ToCP: Cardinal; Src, Dest: PChar; Length: Integer): Integer;
+function TranslateString(FromCP, ToCP: Cardinal; Src, Dest: PAnsiChar; Length: Integer): Integer;
 var
   WideCharStr: array[0..1023] of WideChar;
   wideBytes: Cardinal;
@@ -363,22 +410,32 @@ begin
   if Length = -1 then
     Length := StrLen(Src);
   Result := Length;
-{$ifndef WINCE}
   if (FromCP = GetOEMCP) and (ToCP = GetACP) then
+  begin
+    {$IFDEF DELPHI_2010}
+    OemToCharBuff(Src, PChar(Dest), Length)
+    {$ELSE}
     OemToCharBuff(Src, Dest, Length)
+    {$ENDIF}
+  end
   else
   if (FromCP = GetACP) and (ToCP = GetOEMCP) then
+  begin
+    {$IFDEF DELPHI_2009}
+    CharToOemBuff(PChar(Src), Dest, Length)
+    {$ELSE}
     CharToOemBuff(Src, Dest, Length)
+    {$ENDIF}
+  end
   else
-{$endif}
   if FromCP = ToCP then
   begin
     if Src <> Dest then
       Move(Src^, Dest^, Length);
   end else begin
     // does this work on Win95/98/ME?
-    wideBytes := MultiByteToWideChar(FromCP, MB_PRECOMPOSED, Src, Length, LPWSTR(@WideCharStr[0]), 1024);
-    Result := WideCharToMultiByte(ToCP, 0, LPWSTR(@WideCharStr[0]), wideBytes, Dest, Length, nil, nil);
+    wideBytes := MultiByteToWideChar(FromCP, MB_PRECOMPOSED, PAnsiChar(Src), Length, LPWSTR(@WideCharStr[0]), 1024);
+    WideCharToMultiByte(ToCP, 0, LPWSTR(@WideCharStr[0]), wideBytes, PAnsiChar(Dest), Length, nil, nil);
   end;
 end;
 

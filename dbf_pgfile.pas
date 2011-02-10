@@ -43,7 +43,7 @@ type
     FPagesPerRecord: Integer;
     FCachedSize: Integer;
     FCachedRecordCount: Integer;
-    FHeader: PChar;
+    FHeader: PAnsiChar;
     FActive: Boolean;
     FNeedRecalc: Boolean;
     FHeaderModified: Boolean;
@@ -136,7 +136,7 @@ type
     property CachedRecordCount: Integer read FCachedRecordCount;
     property PageOffsetByHeader: Boolean read FPageOffsetbyHeader write SetPageOffsetByHeader;
     property FileLocked: Boolean read FFileLocked;
-    property Header: PChar read FHeader;
+    property Header: PAnsiChar read FHeader;
     property FileName: string read FFileName write SetFileName;
     property Stream: TStream read FStream write SetStream;
     property BufferAhead: Boolean read FBufferAhead write SetBufferAhead;
@@ -463,7 +463,7 @@ begin
       RecEnd := PagesPerRecord * PageSize;
     end;
     // we can write this record to buffer
-    Move(Buffer^, PChar(FBufferPtr)[RecEnd-RecordSize], RecordSize);
+    Move(Buffer^, PAnsiChar(FBufferPtr)[RecEnd-RecordSize], RecordSize);
     FBufferModified := true;
     // update cached size
     UpdateCachedSize(FBufferOffset+RecEnd);

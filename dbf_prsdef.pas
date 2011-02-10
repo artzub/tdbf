@@ -7,7 +7,7 @@ interface
 uses
   SysUtils,
   Classes,
-  Db,
+  dbf_common,
   dbf_prssupp;
 
 const
@@ -25,11 +25,6 @@ type
   EParserException = class(Exception);
   PExpressionRec = ^TExpressionRec;
   PDynamicType = ^TDynamicType;
-  PDateTimeRec = ^TDateTimeRec;
-  PDouble = ^Double;
-{$ifdef SUPPORT_INT64}
-  PLargeInt = ^Int64;
-{$endif}
 
   TExprWord = class;
 
@@ -351,6 +346,8 @@ const
   ('c' in 'a,b') =False}
 
 function ExprCharToExprType(ExprChar: Char): TExpressionType;
+
+
 
 implementation
 
