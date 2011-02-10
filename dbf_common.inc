@@ -183,6 +183,20 @@
   {$define DELPHI_3}
 {$endif}
 
+{$ifdef VER220} // Delphi 2011
+  {$define DELPHI_2010}
+  {$define DELPHI_2009}
+  {$define DELPHI_2007}
+  {$define DELPHI_2006}
+  {$define DELPHI_2005}
+  {$define DELPHI_8}
+  {$define DELPHI_7}
+  {$define DELPHI_6}
+  {$define DELPHI_5}
+  {$define DELPHI_4}
+  {$define DELPHI_3}
+{$endif}
+
 //-------------------------------------------------------
 //--- Conclude supported features from delphi version ---
 //-------------------------------------------------------
